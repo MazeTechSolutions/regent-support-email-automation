@@ -169,6 +169,8 @@ Grant admin consent for these permissions in Azure Portal.
 | `/subscriptions` | DELETE | Delete subscription |
 | `/emails` | GET | Get recent processed emails |
 | `/stats` | GET | Get classification statistics |
+| `/conversations` | GET | Get conversation statistics (grouped by thread) |
+| `/conversation/{id}` | GET | Get all emails in a specific conversation thread |
 | `/init-db` | POST | Initialize database schema |
 | cron | scheduled | Daily renewal of MS Graph subscriptions |
 
@@ -192,11 +194,12 @@ Edit `src/config.py` to modify classification categories:
 
 ## Data model (D1)
 - Table `emails` (created by `/init-db` or `init_db` in `database.py`)
-  - `message_id` (unique), `subject`, `snippet`, `from_address`, `from_name`
+  - `message_id` (unique), `conversation_id`, `subject`, `snippet`, `from_address`, `from_name`
   - `classification`, `confidence`, `reason`, `draft_reply`
   - `received_at`, `processed_at`, `created_at`
-- Indexes: `idx_emails_message_id`, `idx_emails_classification`
+- Indexes: `idx_emails_message_id`, `idx_emails_classification`, `idx_emails_conversation_id`
 - Duplicate guard: Worker checks `email_exists` before reprocessing
+- Conversation tracking: `conversation_id` from MS Graph groups related emails in a thread
 
 ## Development
 

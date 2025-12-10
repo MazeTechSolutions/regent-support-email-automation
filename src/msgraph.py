@@ -96,6 +96,7 @@ async def get_email_by_id(access_token: str, user_email: str, message_id: str) -
     
     return {
         "id": data.get("id", ""),
+        "conversation_id": data.get("conversationId", ""),
         "subject": data.get("subject", ""),
         "body_preview": data.get("bodyPreview", ""),
         "body_content": body_data.get("content", "") if body_data else "",

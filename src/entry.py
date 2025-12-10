@@ -19,7 +19,15 @@ from msgraph import (
     renew_subscription,
 )
 from classifier import classify_email
-from database import init_db, email_exists, save_email, get_recent_emails, get_classification_stats
+from database import (
+    init_db,
+    email_exists,
+    save_email,
+    get_recent_emails,
+    get_classification_stats,
+    get_emails_by_conversation,
+    get_conversation_stats,
+)
 
 def to_js(obj):
     return _to_js(obj, dict_converter=Object.fromEntries)
@@ -75,6 +83,14 @@ class Default(WorkerEntrypoint):
         
         if path == "/emails" and method == "GET":
             return await self._get_recent_emails()
+        
+        # Conversation endpoints
+        if path == "/conversations" and method == "GET":
+            return await self._get_conversation_stats()
+        
+        if path.startswith("/conversation/") and method == "GET":
+            conversation_id = path[14:]  # Remove "/conversation/" prefix
+            return await self._get_conversation(conversation_id)
         
         # Init DB (one-time setup)
         if path == "/init-db" and method == "POST":
@@ -196,6 +212,7 @@ class Default(WorkerEntrypoint):
                 confidence=float(confidence),
                 reason=reason,
                 received_at=email.get("received_datetime", "") or "",
+                conversation_id=email.get("conversation_id", "") or "",
             )
             
             console.log(f"Email {message_id} processed successfully")
@@ -300,6 +317,22 @@ class Default(WorkerEntrypoint):
         try:
             emails = await get_recent_emails(self.env.DB, 50)
             return Response.json(to_js({"emails": emails}))
+        except Exception as e:
+            return Response.json(to_js({"error": str(e)}), status=500)
+    
+    async def _get_conversation_stats(self):
+        """Get conversation statistics."""
+        try:
+            stats = await get_conversation_stats(self.env.DB)
+            return Response.json(to_js({"conversation_stats": stats}))
+        except Exception as e:
+            return Response.json(to_js({"error": str(e)}), status=500)
+    
+    async def _get_conversation(self, conversation_id: str):
+        """Get all emails in a conversation."""
+        try:
+            emails = await get_emails_by_conversation(self.env.DB, conversation_id)
+            return Response.json(to_js({"conversation_id": conversation_id, "emails": emails}))
         except Exception as e:
             return Response.json(to_js({"error": str(e)}), status=500)
     
