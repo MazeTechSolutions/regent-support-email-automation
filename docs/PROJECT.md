@@ -11,6 +11,15 @@ This system automatically:
 4. Applies category tags to emails in Outlook (requires Mail.ReadWrite permission)
 5. Stores classification results in Cloudflare D1 database
 
+### Email processing flow
+- `/webhook` validates the Graph `validationToken` (GET/POST). Notifications must include the matching `clientState` (`WEBHOOK_VALIDATION_TOKEN`).
+- For each `created` notification, extracts the `message_id` and skips processing if it already exists in D1.
+- Fetches the email via MS Graph using client credentials (`MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_USER_EMAIL`).
+- Classifies `subject + bodyPreview` with Gemini 2.0 Flash Lite using the prompt in `src/config.py`.
+- Applies an Outlook category using the title-cased classification (best-effort; logs a warning if `Mail.ReadWrite` is missing).
+- Persists the record to D1 with subject/snippet/from/reason/confidence and timestamps.
+- Returns `202 Accepted` even on errors to prevent Graph retries (errors are logged).
+
 ## Architecture
 
 ```
@@ -51,6 +60,13 @@ This system automatically:
 ├── WEBHOOK_NOTES.txt   # Webhook registration details
 └── package.json        # npm scripts
 ```
+
+## Runtime configuration (wrangler.jsonc)
+- `main`: `src/entry.py` (Python Workers, `compatibility_date` `2025-12-09`, `python_workers` flag)
+- D1 binding `DB` → `regent-support-emails` (remote enabled)
+- Cron trigger `0 6 * * *` renews MS Graph subscriptions daily (~3-day expiry)
+- Custom domain route: `support-classifier.regent.business`
+- Secrets expected at deploy time: `MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_USER_EMAIL`, `GEMINI_API_KEY`, `WEBHOOK_VALIDATION_TOKEN`
 
 ## Prerequisites
 
@@ -132,6 +148,7 @@ curl -X POST https://<your-worker-url>/subscriptions \
 ```
 
 **Important:** Save the subscription ID returned - needed to delete/renew.
+See `WEBHOOK_NOTES.txt` for the latest deployed URLs and subscription IDs.
 
 ## Azure AD App Requirements
 
@@ -153,20 +170,33 @@ Grant admin consent for these permissions in Azure Portal.
 | `/emails` | GET | Get recent processed emails |
 | `/stats` | GET | Get classification statistics |
 | `/init-db` | POST | Initialize database schema |
+| cron | scheduled | Daily renewal of MS Graph subscriptions |
 
 ## Classification Tags
 
 Edit `src/config.py` to modify classification categories:
 
-- `academic-results` - Queries about marks, grades, results
-- `academic-exam` - Exam-specific issues (remarks, supplementary)
-- `admin-transcript` - Transcript requests
-- `admin-graduation` - Graduation inquiries
-- `finance-payment` - Payment-related issues
-- `finance-fees` - Fee statements, quotes
-- `registration` - Enrollment, registration
-- `technical-access` - Portal/LMS login issues
-- `general` - General inquiries
+- `academic-results` - Marks, missing results, blocked results
+- `academic-exam` - Exam issues, supplementaries, Aegrotat/sick exams
+- `academic-assignment` - Assignment submissions, extensions, marking feedback
+- `admin-transcript` - Academic records, transcript holds/requests
+- `admin-graduation` - Graduation ceremonies, certificates, timelines
+- `finance-payment` - POP, refunds, allocations, blocked for payment
+- `finance-fees` - Statements, invoices, quotes, balances
+- `registration` - Enrolment, add/repeat modules, registration forms
+- `technical-proctoring` - SMOWL/in-exam outages (camera, C-LS-1001, kicked out)
+- `technical-access` - Login/access issues not during an exam
+- `general-inquiry` - Timetables, module codes, calendar dates, pass marks
+- `complaint-escalation` - Formal grievances or repeated unresolved issues
+- (Fallback) `general` is used by the Worker if a tag is invalid/unclear
+
+## Data model (D1)
+- Table `emails` (created by `/init-db` or `init_db` in `database.py`)
+  - `message_id` (unique), `subject`, `snippet`, `from_address`, `from_name`
+  - `classification`, `confidence`, `reason`, `draft_reply`
+  - `received_at`, `processed_at`, `created_at`
+- Indexes: `idx_emails_message_id`, `idx_emails_classification`
+- Duplicate guard: Worker checks `email_exists` before reprocessing
 
 ## Development
 
@@ -194,6 +224,10 @@ uv run python scripts/check_inbox.py
 
 ## Managing Webhooks
 
+### Auto-renewal
+- Subscriptions expire after ~3 days; the Worker cron renews them daily at 06:00 UTC.
+- Check logs (`npx wrangler tail`) to confirm renewals.
+
 ### List Active Subscriptions
 ```bash
 curl https://<your-worker-url>/subscriptions
@@ -211,7 +245,7 @@ curl -X DELETE https://<your-worker-url>/subscriptions \
 uv run python scripts/create_subscription.py
 ```
 
-**Note:** MS Graph subscriptions expire after ~3 days and must be renewed.
+**Note:** MS Graph subscriptions expire after ~3 days; auto-renew runs daily via cron, but re-register if cron is disabled or credentials change.
 
 ## Troubleshooting
 
