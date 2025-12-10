@@ -1,0 +1,97 @@
+================================================================================
+MS GRAPH WEBHOOK REGISTRATION NOTES
+================================================================================
+
+This file stores important details for managing MS Graph webhook subscriptions.
+Keep this file safe - you'll need these details to switch between dev/prod URLs.
+
+--------------------------------------------------------------------------------
+CURRENT DEPLOYMENT
+--------------------------------------------------------------------------------
+Worker URL: https://support-classifier.regent.business
+Webhook Endpoint: https://support-classifier.regent.business/webhook
+(Old URL: https://regent-support-email-automation.muhammad-56e.workers.dev)
+
+Subscription ID: 2bcc5225-8ba5-486d-8d0b-b406dc995f96
+Expiration: AUTO-RENEWED DAILY BY CRON (06:00 UTC)
+Created: 2025-12-10
+
+--------------------------------------------------------------------------------
+HOW TO REGISTER A WEBHOOK (After Deployment)
+--------------------------------------------------------------------------------
+
+1. Deploy the worker:
+   uv run pywrangler deploy
+
+2. Note the deployed URL (e.g., regent-support-email-automation.<subdomain>.workers.dev)
+
+3. Set secrets:
+   npx wrangler secret put MS_TENANT_ID
+   npx wrangler secret put MS_CLIENT_ID
+   npx wrangler secret put MS_CLIENT_SECRET
+   npx wrangler secret put MS_USER_EMAIL
+   npx wrangler secret put GEMINI_API_KEY
+   npx wrangler secret put WEBHOOK_VALIDATION_TOKEN
+
+4. Initialize the database (one-time):
+   curl -X POST https://<your-worker-url>/init-db
+
+5. Register the webhook subscription:
+   curl -X POST https://<your-worker-url>/subscriptions \
+     -H "Content-Type: application/json" \
+     -d '{"webhook_url": "https://<your-worker-url>/webhook"}'
+
+6. SAVE THE RESPONSE - contains subscription_id needed to delete/renew
+
+--------------------------------------------------------------------------------
+HOW TO DELETE/DEACTIVATE A WEBHOOK
+--------------------------------------------------------------------------------
+
+To deactivate before switching to production URL:
+
+curl -X DELETE https://<your-worker-url>/subscriptions \
+  -H "Content-Type: application/json" \
+  -d '{"subscription_id": "<SUBSCRIPTION_ID>"}'
+
+--------------------------------------------------------------------------------
+HOW TO LIST ACTIVE SUBSCRIPTIONS
+--------------------------------------------------------------------------------
+
+curl https://<your-worker-url>/subscriptions
+
+--------------------------------------------------------------------------------
+SUBSCRIPTION HISTORY
+--------------------------------------------------------------------------------
+
+| Date | URL | Subscription ID | Status | Notes |
+|------|-----|-----------------|--------|-------|
+| 2025-12-09 | muhammad-56e.workers.dev | c43f7c5f-cf96-4448-92b3-5f609b742e0a | active | Initial dev subscription |
+
+--------------------------------------------------------------------------------
+IMPORTANT NOTES
+--------------------------------------------------------------------------------
+
+1. MS Graph subscriptions expire after max 4230 minutes (~3 days) for messages
+2. AUTO-RENEWAL IS ENABLED via Cron Trigger (runs daily at 06:00 UTC)
+3. The worker handles validation token verification automatically
+4. Client state is used to verify notifications are legitimate
+5. Check logs in Cloudflare dashboard to verify cron renewals are working
+
+--------------------------------------------------------------------------------
+AZURE APP REGISTRATION REQUIREMENTS
+--------------------------------------------------------------------------------
+
+Your Azure AD App needs these API permissions (Application type, not Delegated):
+- Mail.Read (to read emails)
+- Mail.ReadWrite (to apply categories/tags)
+
+Make sure admin consent is granted for these permissions.
+
+--------------------------------------------------------------------------------
+SWITCHING TO PRODUCTION URL
+--------------------------------------------------------------------------------
+
+1. Delete the current dev subscription (see above)
+2. Update the worker URL if using a custom domain
+3. Re-register the webhook with the new URL
+4. Update this file with new subscription details

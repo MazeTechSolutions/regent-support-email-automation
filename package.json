@@ -5,7 +5,8 @@
 	"scripts": {
 		"deploy": "uv run pywrangler deploy",
 		"dev": "uv run pywrangler dev",
-		"start": "uv run pywrangler dev"
+		"start": "uv run pywrangler dev",
+		"test": "uv run pytest tests/ -v"
 	},
 	"devDependencies": {
 		"wrangler": "^4.53.0"

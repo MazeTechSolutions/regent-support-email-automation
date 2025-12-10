@@ -1,14 +1,17 @@
 [project]
 name = "regent-support-email-automation"
 version = "0.1.0"
-description = "Add your description here"
+description = "Email classification and automation for Regent student support"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "webtypy>=0.1.7",
+    "httpx>=0.27.0",
 ]
 
 [dependency-groups]
 dev = [
-    "workers-py"
+    "workers-py",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
 ]
