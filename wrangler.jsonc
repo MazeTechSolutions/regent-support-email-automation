@@ -7,7 +7,17 @@
 		"python_workers"
 	],
 	"observability": {
-		"enabled": true
+		"enabled": true,
+		"traces": {
+			"enabled": true,
+			// set tracing sampling rate to 5%
+			// "head_sampling_rate": 0.05
+		},
+		"logs": {
+			"enabled": true,
+			// set logging sampling rate to 60%
+			// "head_sampling_rate": 0.6
+		}
 	},
 	// D1 Database binding
 	"d1_databases": [
