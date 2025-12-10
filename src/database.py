@@ -80,8 +80,6 @@ async def save_email(
     draft_reply: str = "",
 ) -> int:
     """Save a processed email to the database."""
-    console.log(f"Saving email: {message_id[:50]}, subject={subject[:30]}, class={classification}")
-    
     # Ensure all values are strings (not None/undefined)
     safe_draft = draft_reply if draft_reply else ""
     safe_subject = subject if subject else "(No subject)"
@@ -91,6 +89,8 @@ async def save_email(
     safe_reason = reason if reason else ""
     safe_received = received_at if received_at else ""
     safe_conversation_id = conversation_id if conversation_id else ""
+    
+    console.log(f"Saving email: {message_id[:50]}, subject={safe_subject[:30]}, class={classification}")
     
     result = await db.prepare("""
         INSERT INTO emails (

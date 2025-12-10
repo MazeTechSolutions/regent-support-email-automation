@@ -11,8 +11,11 @@ def test_classification_tags_exist():
     """Verify all expected tags are present."""
     tag_names = [tag["name"] for tag in CLASSIFICATION_TAGS]
     expected = [
-        "academic-results", "academic-exam", "admin-transcript", "admin-graduation",
-        "finance-payment", "finance-fees", "registration", "technical-access", "general"
+        "academic-results", "academic-exam", "academic-assignment",
+        "admin-transcript", "admin-graduation",
+        "finance-payment", "finance-fees", "registration",
+        "technical-proctoring", "technical-access",
+        "general-inquiry", "complaint-escalation"
     ]
     assert set(tag_names) == set(expected)
 

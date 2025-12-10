@@ -33,8 +33,11 @@ def test_valid_classification_tags():
     from config import CLASSIFICATION_TAGS
     
     valid_tags = {
-        "academic-results", "academic-exam", "admin-transcript", "admin-graduation",
-        "finance-payment", "finance-fees", "registration", "technical-access", "general"
+        "academic-results", "academic-exam", "academic-assignment",
+        "admin-transcript", "admin-graduation",
+        "finance-payment", "finance-fees", "registration",
+        "technical-proctoring", "technical-access",
+        "general-inquiry", "complaint-escalation"
     }
     actual_tags = {tag["name"] for tag in CLASSIFICATION_TAGS}
     
@@ -67,7 +70,7 @@ class TestClassifierResponseParsing:
         assert result["classification"] == "finance"
     
     def test_invalid_tag_handling(self):
-        """Test that invalid tags get corrected to 'general'."""
+        """Test that invalid tags get corrected to 'general-inquiry'."""
         import sys
         import os
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
@@ -80,10 +83,10 @@ class TestClassifierResponseParsing:
         result = {"classification": "invalid_tag", "confidence": 0.9, "reason": "test"}
         
         if result.get("classification") not in valid_tags:
-            result["classification"] = "general"
+            result["classification"] = "general-inquiry"
             result["confidence"] = max(0.3, result.get("confidence", 0.5) * 0.5)
         
-        assert result["classification"] == "general"
+        assert result["classification"] == "general-inquiry"
         assert result["confidence"] == 0.45  # 0.9 * 0.5
 
 
@@ -111,7 +114,7 @@ class TestEmailExamples:
         elif any(word in text for word in ["password", "login", "portal", "error"]):
             return "technical-access"
         else:
-            return "general"
+            return "general-inquiry"
     
     def test_academic_email(self):
         result = self.get_expected_classification(
@@ -153,4 +156,4 @@ class TestEmailExamples:
             "Hello",
             "I have a question about the campus"
         )
-        assert result == "general"
+        assert result == "general-inquiry"
