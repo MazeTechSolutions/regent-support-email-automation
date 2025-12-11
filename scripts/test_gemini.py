@@ -2,6 +2,7 @@
 """
 Test Gemini classifier directly.
 """
+import httpx
 import asyncio
 import os
 import json
@@ -17,13 +18,11 @@ if env_path.exists():
                 key, value = line.split("=", 1)
                 os.environ[key] = value
 
-import httpx
-
 
 async def test_gemini():
     api_key = os.environ["GEMINI_API_KEY"]
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key={api_key}"
-    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+
     # Simple test prompt
     payload = {
         "contents": [
@@ -41,16 +40,16 @@ Respond in JSON format: {"classification": "admin-transcript", "confidence": 0.9
             "maxOutputTokens": 256,
         }
     }
-    
+
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
             url,
             json=payload,
             headers={"Content-Type": "application/json"}
         )
-        
+
         print(f"Status: {response.status_code}")
-        
+
         if response.status_code == 200:
             data = response.json()
             text = data["candidates"][0]["content"]["parts"][0]["text"]

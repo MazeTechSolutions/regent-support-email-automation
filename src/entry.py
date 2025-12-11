@@ -249,7 +249,8 @@ class Default(WorkerEntrypoint):
                 reason=reason,
                 received_at=email.get("received_datetime", "") or "",
                 conversation_id=email.get("conversation_id", "") or "",
-                body_text=masked["body"][:10000],  # Store cleaned body text (truncated)
+                # Store cleaned body text (truncated)
+                body_text=masked["body"][:10000],
             )
 
             # Save token usage if available
@@ -258,7 +259,7 @@ class Default(WorkerEntrypoint):
                 await save_llm_usage(
                     db,
                     email_id=email_id,
-                    model="gemini-2.0-flash-lite",
+                    model="gemini-2.5-flash",
                     operation="classification",
                     input_tokens=token_usage.get("input_tokens", 0),
                     output_tokens=token_usage.get("output_tokens", 0),

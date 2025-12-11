@@ -18,7 +18,7 @@ def js_to_py(js_obj):
     return json.loads(JSON.stringify(js_obj))
 
 
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
 
 async def classify_email(api_key: str, subject: str, body: str) -> dict:
