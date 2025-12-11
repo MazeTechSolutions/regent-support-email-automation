@@ -70,7 +70,8 @@ async def get_access_token(tenant_id: str, client_id: str, client_secret: str) -
 
 async def get_email_by_id(access_token: str, user_email: str, message_id: str) -> dict:
     """Fetch a specific email by ID."""
-    url = f"{GRAPH_BASE_URL}/users/{user_email}/messages/{message_id}"
+    # Must explicitly request body field - MS Graph doesn't return it by default
+    url = f"{GRAPH_BASE_URL}/users/{user_email}/messages/{message_id}?$select=id,conversationId,subject,bodyPreview,body,from,receivedDateTime,categories"
     
     response = await fetch(
         url,

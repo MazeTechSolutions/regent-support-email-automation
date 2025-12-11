@@ -14,6 +14,7 @@ async def init_db(db):
             conversation_id TEXT,
             subject TEXT,
             snippet TEXT,
+            body_text TEXT,
             from_address TEXT,
             from_name TEXT,
             classification TEXT,
@@ -36,6 +37,25 @@ async def init_db(db):
     
     await db.prepare("""
         CREATE INDEX IF NOT EXISTS idx_emails_conversation_id ON emails(conversation_id)
+    """).run()
+    
+    # Token usage tracking table
+    await db.prepare("""
+        CREATE TABLE IF NOT EXISTS llm_usage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email_id INTEGER NOT NULL,
+            model TEXT NOT NULL,
+            operation TEXT NOT NULL,
+            input_tokens INTEGER,
+            output_tokens INTEGER,
+            total_tokens INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (email_id) REFERENCES emails(id)
+        )
+    """).run()
+    
+    await db.prepare("""
+        CREATE INDEX IF NOT EXISTS idx_llm_usage_email_id ON llm_usage(email_id)
     """).run()
 
 
@@ -78,12 +98,14 @@ async def save_email(
     received_at: str,
     conversation_id: str = "",
     draft_reply: str = "",
+    body_text: str = "",
 ) -> int:
     """Save a processed email to the database."""
     # Ensure all values are strings (not None/undefined)
     safe_draft = draft_reply if draft_reply else ""
     safe_subject = subject if subject else "(No subject)"
     safe_snippet = snippet if snippet else ""
+    safe_body_text = body_text if body_text else ""
     safe_from_addr = from_address if from_address else ""
     safe_from_name = from_name if from_name else ""
     safe_reason = reason if reason else ""
@@ -94,14 +116,15 @@ async def save_email(
     
     result = await db.prepare("""
         INSERT INTO emails (
-            message_id, conversation_id, subject, snippet, from_address, from_name,
+            message_id, conversation_id, subject, snippet, body_text, from_address, from_name,
             classification, confidence, reason, draft_reply, received_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """).bind(
         message_id,
         safe_conversation_id,
         safe_subject,
         safe_snippet,
+        safe_body_text,
         safe_from_addr,
         safe_from_name,
         classification,
@@ -113,6 +136,63 @@ async def save_email(
     
     console.log(f"Email saved successfully")
     return result.meta.last_row_id if result.meta else None
+
+
+async def save_llm_usage(
+    db,
+    email_id: int,
+    model: str,
+    operation: str,
+    input_tokens: int,
+    output_tokens: int,
+    total_tokens: int,
+) -> int:
+    """Save LLM token usage for an email."""
+    result = await db.prepare("""
+        INSERT INTO llm_usage (email_id, model, operation, input_tokens, output_tokens, total_tokens)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """).bind(
+        email_id,
+        model,
+        operation,
+        input_tokens,
+        output_tokens,
+        total_tokens,
+    ).run()
+    
+    return result.meta.last_row_id if result.meta else None
+
+
+async def get_llm_usage_stats(db) -> dict:
+    """Get LLM usage statistics."""
+    result = await db.prepare("""
+        SELECT 
+            model,
+            operation,
+            COUNT(*) as count,
+            SUM(input_tokens) as total_input_tokens,
+            SUM(output_tokens) as total_output_tokens,
+            SUM(total_tokens) as total_tokens,
+            AVG(input_tokens) as avg_input_tokens,
+            AVG(output_tokens) as avg_output_tokens
+        FROM llm_usage
+        GROUP BY model, operation
+    """).all()
+    
+    stats = []
+    if result.results:
+        for row in result.results:
+            stats.append({
+                "model": row.model,
+                "operation": row.operation,
+                "count": row.count,
+                "total_input_tokens": row.total_input_tokens,
+                "total_output_tokens": row.total_output_tokens,
+                "total_tokens": row.total_tokens,
+                "avg_input_tokens": round(row.avg_input_tokens, 2) if row.avg_input_tokens else 0,
+                "avg_output_tokens": round(row.avg_output_tokens, 2) if row.avg_output_tokens else 0,
+            })
+    return {"usage": stats}
 
 
 async def get_email_by_message_id(db, message_id: str) -> dict:

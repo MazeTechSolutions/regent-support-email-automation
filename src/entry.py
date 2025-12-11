@@ -24,10 +24,12 @@ from database import (
     init_db,
     email_exists,
     save_email,
+    save_llm_usage,
     get_recent_emails,
     get_classification_stats,
     get_emails_by_conversation,
     get_conversation_stats,
+    get_llm_usage_stats,
 )
 
 
@@ -102,6 +104,10 @@ class Default(WorkerEntrypoint):
         # Presidio config status
         if path == "/presidio-config" and method == "GET":
             return Response.json(to_js({"presidio": get_presidio_config()}))
+
+        # LLM usage stats
+        if path == "/llm-usage" and method == "GET":
+            return await self._get_llm_usage()
 
         return Response("Not Found", status=404)
 
@@ -229,9 +235,9 @@ class Default(WorkerEntrypoint):
                 console.error(
                     f"Error applying category '{category_name}': {cat_err}")
 
-            # Save to database
+            # Save to database (include full body text for reference)
             reason = classification_result.get("reason", "") or "No reason"
-            await save_email(
+            email_id = await save_email(
                 db,
                 message_id=message_id,
                 subject=email.get("subject", "") or "(No subject)",
@@ -243,7 +249,21 @@ class Default(WorkerEntrypoint):
                 reason=reason,
                 received_at=email.get("received_datetime", "") or "",
                 conversation_id=email.get("conversation_id", "") or "",
+                body_text=masked["body"][:10000],  # Store cleaned body text (truncated)
             )
+
+            # Save token usage if available
+            token_usage = classification_result.get("token_usage")
+            if token_usage and email_id:
+                await save_llm_usage(
+                    db,
+                    email_id=email_id,
+                    model="gemini-2.0-flash-lite",
+                    operation="classification",
+                    input_tokens=token_usage.get("input_tokens", 0),
+                    output_tokens=token_usage.get("output_tokens", 0),
+                    total_tokens=token_usage.get("total_tokens", 0),
+                )
 
             console.log(f"Email {message_id} processed successfully")
 
@@ -363,6 +383,14 @@ class Default(WorkerEntrypoint):
         try:
             emails = await get_emails_by_conversation(self.env.DB, conversation_id)
             return Response.json(to_js({"conversation_id": conversation_id, "emails": emails}))
+        except Exception as e:
+            return Response.json(to_js({"error": str(e)}), status=500)
+
+    async def _get_llm_usage(self):
+        """Get LLM token usage statistics."""
+        try:
+            stats = await get_llm_usage_stats(self.env.DB)
+            return Response.json(to_js(stats))
         except Exception as e:
             return Response.json(to_js({"error": str(e)}), status=500)
 

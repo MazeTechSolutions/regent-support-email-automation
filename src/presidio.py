@@ -6,6 +6,8 @@ import json
 from js import fetch, Object, console, JSON
 from pyodide.ffi import to_js as _to_js
 
+from utils import strip_html
+
 
 def to_js(obj):
     return _to_js(obj, dict_converter=Object.fromEntries)
@@ -204,7 +206,7 @@ async def mask_email_content(subject: str, body: str, from_name: str = "", from_
     Returns:
         {
             "subject": str,  # Masked subject
-            "body": str,  # Masked body
+            "body": str,  # Masked body (HTML stripped)
             "from_name": str,  # Masked from name
             "from_address": str,  # Masked from address (preserves Regent emails)
             "original_subject": str,
@@ -214,9 +216,12 @@ async def mask_email_content(subject: str, body: str, from_name: str = "", from_
             "success": bool,
         }
     """
+    # Strip HTML from body (MS Graph returns HTML content)
+    clean_body = strip_html(body)
+    
     result = {
         "subject": subject,
-        "body": body,
+        "body": clean_body,
         "from_name": from_name,
         "from_address": from_address,
         "original_subject": subject,
@@ -236,8 +241,8 @@ async def mask_email_content(subject: str, body: str, from_name: str = "", from_
         result["total_entities_found"] += subject_result["entities_found"]
         result["total_entities_masked"] += subject_result["entities_masked"]
         
-        # Mask body
-        body_result = await mask_pii(body)
+        # Mask body (already HTML-stripped)
+        body_result = await mask_pii(clean_body)
         result["body"] = body_result["masked_text"]
         result["total_entities_found"] += body_result["entities_found"]
         result["total_entities_masked"] += body_result["entities_masked"]

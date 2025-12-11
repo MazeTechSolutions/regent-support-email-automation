@@ -6,6 +6,7 @@ from js import fetch, Object, console, JSON
 from pyodide.ffi import to_js as _to_js
 
 from config import get_classification_prompt, CLASSIFICATION_TAGS
+from utils import strip_html
 
 
 def to_js(obj):
@@ -23,16 +24,27 @@ GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini
 async def classify_email(api_key: str, subject: str, body: str) -> dict:
     """
     Classify an email using Gemini 2.5 Flash.
-    Returns: {"classification": str, "confidence": float, "reason": str}
+    Returns: {
+        "classification": str,
+        "confidence": float,
+        "reason": str,
+        "token_usage": {"input_tokens": int, "output_tokens": int, "total_tokens": int} | None
+    }
     """
     system_prompt = get_classification_prompt()
+
+    # Strip HTML from body (MS Graph returns HTML content)
+    clean_body = strip_html(body)
+    
+    # Log body lengths for debugging
+    console.log(f"[Classification] Raw body length: {len(body)}, Clean body length: {len(clean_body)}, Truncated to: {min(len(clean_body), 3000)}")
 
     user_prompt = f"""Please classify the following email:
 
 SUBJECT: {subject}
 
 BODY:
-{body[:3000]}"""  # Truncate body to ~3k chars to avoid token limits
+{clean_body[:3000]}"""  # Truncate body to ~3k chars to avoid token limits
 
     payload = {
         "contents": [
@@ -67,10 +79,22 @@ BODY:
             "classification": "general",
             "confidence": 0.0,
             "reason": f"Classification failed: {response.status}",
+            "token_usage": None,
         }
 
     js_data = await response.json()
     data = js_to_py(js_data)
+    
+    # Extract token usage from response
+    usage_metadata = data.get("usageMetadata", {})
+    token_usage = None
+    if usage_metadata:
+        token_usage = {
+            "input_tokens": usage_metadata.get("promptTokenCount", 0),
+            "output_tokens": usage_metadata.get("candidatesTokenCount", 0),
+            "total_tokens": usage_metadata.get("totalTokenCount", 0),
+        }
+        console.log(f"[Gemini] Token usage - Input: {token_usage['input_tokens']}, Output: {token_usage['output_tokens']}, Total: {token_usage['total_tokens']}")
 
     try:
         # Extract the text response safely
@@ -117,6 +141,7 @@ BODY:
             "classification": result.get("classification", "general"),
             "confidence": float(result.get("confidence", 0.5)),
             "reason": result.get("reason", "No reason provided"),
+            "token_usage": token_usage,
         }
 
     except (json.JSONDecodeError, KeyError, IndexError, TypeError, ValueError) as e:
@@ -124,5 +149,6 @@ BODY:
         return {
             "classification": "general",
             "confidence": 0.0,
+            "token_usage": token_usage,
             "reason": f"Failed to parse response: {str(e)}",
         }
