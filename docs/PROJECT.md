@@ -15,7 +15,7 @@ This system automatically:
 - `/webhook` validates the Graph `validationToken` (GET/POST). Notifications must include the matching `clientState` (`WEBHOOK_VALIDATION_TOKEN`).
 - For each `created` notification, extracts the `message_id` and skips processing if it already exists in D1.
 - Fetches the email via MS Graph using client credentials (`MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `MS_USER_EMAIL`).
-- Classifies `subject + bodyPreview` with Gemini 2.5 Flash using the prompt in `src/config.py`.
+- Classifies `subject + bodyPreview` with Gemini (`GEMINI_MODEL` in `src/config.py`, default `gemini-2.5-flash`) using the prompt in `src/config.py`.
 - Applies an Outlook category using the title-cased classification (best-effort; logs a warning if `Mail.ReadWrite` is missing).
 - Persists the record to D1 with subject/snippet/from/reason/confidence and timestamps.
 - Returns `202 Accepted` even on errors to prevent Graph retries (errors are logged).

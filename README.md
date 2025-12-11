@@ -29,5 +29,5 @@ Cloudflare Python Worker that classifies incoming Regent student support emails 
 
 ## Notes
 - D1 table `emails` stores message_id, subject/snippet, from, classification, confidence, reason, timestamps; duplicates are skipped by `message_id`.
-- Gemini model: `gemini-2.5-flash` with prompt and tags in `src/config.py`.
+- Gemini model configured once via `GEMINI_MODEL`/`GEMINI_API_URL` in `src/config.py` (default `gemini-2.5-flash`) alongside the prompt and tags.
 - Logs: `npx wrangler tail --format=pretty`.

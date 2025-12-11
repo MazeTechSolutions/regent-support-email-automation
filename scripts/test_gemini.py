@@ -7,9 +7,15 @@ import asyncio
 import os
 import json
 from pathlib import Path
+import sys
+
+ROOT_DIR = Path(__file__).parent.parent
+sys.path.append(str(ROOT_DIR / "src"))
+
+from config import GEMINI_API_URL  # noqa: E402
 
 # Load .env file
-env_path = Path(__file__).parent.parent / ".env"
+env_path = ROOT_DIR / ".env"
 if env_path.exists():
     with open(env_path) as f:
         for line in f:
@@ -21,7 +27,7 @@ if env_path.exists():
 
 async def test_gemini():
     api_key = os.environ["GEMINI_API_KEY"]
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    url = f"{GEMINI_API_URL}?key={api_key}"
 
     # Simple test prompt
     payload = {

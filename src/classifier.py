@@ -5,7 +5,7 @@ import json
 from js import fetch, Object, console, JSON
 from pyodide.ffi import to_js as _to_js
 
-from config import get_classification_prompt, CLASSIFICATION_TAGS
+from config import get_classification_prompt, CLASSIFICATION_TAGS, GEMINI_API_URL
 from utils import strip_html
 
 
@@ -16,9 +16,6 @@ def to_js(obj):
 def js_to_py(js_obj):
     """Convert JS object to Python dict via JSON serialization."""
     return json.loads(JSON.stringify(js_obj))
-
-
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
 
 async def classify_email(api_key: str, subject: str, body: str) -> dict:

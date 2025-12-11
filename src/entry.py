@@ -31,6 +31,7 @@ from database import (
     get_conversation_stats,
     get_llm_usage_stats,
 )
+from config import GEMINI_MODEL
 
 
 def to_js(obj):
@@ -259,7 +260,7 @@ class Default(WorkerEntrypoint):
                 await save_llm_usage(
                     db,
                     email_id=email_id,
-                    model="gemini-2.5-flash",
+                    model=GEMINI_MODEL,
                     operation="classification",
                     input_tokens=token_usage.get("input_tokens", 0),
                     output_tokens=token_usage.get("output_tokens", 0),
