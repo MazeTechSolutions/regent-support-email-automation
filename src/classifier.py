@@ -35,16 +35,17 @@ async def classify_email(api_key: str, subject: str, body: str) -> dict:
 
     # Strip HTML from body (MS Graph returns HTML content)
     clean_body = strip_html(body)
-    
+
     # Log body lengths for debugging
-    console.log(f"[Classification] Raw body length: {len(body)}, Clean body length: {len(clean_body)}, Truncated to: {min(len(clean_body), 3000)}")
+    console.log(
+        f"[Classification] Raw body length: {len(body)}, Clean body length: {len(clean_body)}, Truncated to: {min(len(clean_body), 5000)}")
 
     user_prompt = f"""Please classify the following email:
 
 SUBJECT: {subject}
 
 BODY:
-{clean_body[:3000]}"""  # Truncate body to ~3k chars to avoid token limits
+{clean_body[:5000]}"""  # Truncate body to ~5k chars to avoid token limits
 
     payload = {
         "contents": [
@@ -84,7 +85,7 @@ BODY:
 
     js_data = await response.json()
     data = js_to_py(js_data)
-    
+
     # Extract token usage from response
     usage_metadata = data.get("usageMetadata", {})
     token_usage = None
@@ -94,7 +95,8 @@ BODY:
             "output_tokens": usage_metadata.get("candidatesTokenCount", 0),
             "total_tokens": usage_metadata.get("totalTokenCount", 0),
         }
-        console.log(f"[Gemini] Token usage - Input: {token_usage['input_tokens']}, Output: {token_usage['output_tokens']}, Total: {token_usage['total_tokens']}")
+        console.log(
+            f"[Gemini] Token usage - Input: {token_usage['input_tokens']}, Output: {token_usage['output_tokens']}, Total: {token_usage['total_tokens']}")
 
     try:
         # Extract the text response safely
