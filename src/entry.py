@@ -176,11 +176,11 @@ class Default(WorkerEntrypoint):
             console.log(f"Processing email: {email.get('subject', 'No subject')}")
             console.log(f"Email data: from={email.get('from_address')}, received={email.get('received_datetime')}")
             
-            # Classify the email
+            # Classify the email using full body content
             classification_result = await classify_email(
                 self.env.GEMINI_API_KEY,
                 email["subject"],
-                email["body_preview"],
+                email["body_content"],
             )
             
             classification = classification_result.get("classification", "general")

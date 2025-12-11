@@ -165,12 +165,20 @@ Here are examples for each category:
 
 {examples_section}
 
+IMPORTANT - HANDLING EMAIL THREADS:
+- The email body may contain a conversation thread with previous messages (quoted replies, forwarded content, etc.)
+- You must ONLY classify based on the MOST RECENT/NEWEST message (typically at the top)
+- Use the conversation history ONLY as context to better understand the current request
+- Do NOT classify based on older messages in the thread
+- Look for indicators like "On [date], [person] wrote:", "From:", "-----Original Message-----", or ">" quote markers to identify older messages
+
 INSTRUCTIONS:
-1. Read the email subject and body carefully
-2. Determine the PRIMARY intent of the email
-3. Select the SINGLE most appropriate category
-4. Provide a confidence score (0.0 to 1.0)
-5. Give a brief reason for your classification
+1. Identify the MOST RECENT message in the email (ignore quoted/forwarded older content)
+2. Read the subject and the latest message carefully
+3. Determine the PRIMARY intent of the latest message only
+4. Select the SINGLE most appropriate category
+5. Provide a confidence score (0.0 to 1.0)
+6. Give a brief reason for your classification
 
 RESPOND IN EXACTLY THIS JSON FORMAT (no markdown, no code blocks):
 {{"classification": "<tag_name>", "confidence": <0.0-1.0>, "reason": "<brief explanation>"}}
@@ -178,4 +186,4 @@ RESPOND IN EXACTLY THIS JSON FORMAT (no markdown, no code blocks):
 Valid tags: {valid_tags}
 
 If the email is ambiguous, choose the category that best matches the main request.
-If truly unclear, use "general" with lower confidence."""
+If truly unclear, use "general-inquiry" with lower confidence."""
