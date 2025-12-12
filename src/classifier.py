@@ -20,7 +20,7 @@ def js_to_py(js_obj):
 
 async def classify_email(api_key: str, subject: str, body: str) -> dict:
     """
-    Classify an email using Gemini 2.5 Flash.
+    Classify an email using Gemini 2.5 Flash Lite.
     Returns: {
         "classification": str,
         "confidence": float,
@@ -53,7 +53,8 @@ BODY:
         ],
         "generationConfig": {
             "temperature": 0.1,  # Low temperature for consistent classification
-            "maxOutputTokens": 256,
+            "maxOutputTokens": 512,
+            "responseMimeType": "application/json",
         }
     }
 
@@ -107,25 +108,26 @@ BODY:
             raise ValueError("No parts in response")
 
         text_response = parts[0].get("text", "")
-        console.log(f"Gemini raw response: {text_response[:200]}...")
+        console.log(f"Gemini raw response: {text_response[:300]}...")
 
-        # Clean up potential markdown code blocks
+        # With responseMimeType: "application/json", response should be clean JSON
+        # But keep fallback parsing for robustness
         text_response = text_response.strip()
+
+        # Clean up potential markdown code blocks (fallback)
         if text_response.startswith("```"):
             lines = text_response.split("\n")
-            # Handle both ```json and ``` variants
             text_response = "\n".join(
                 lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
 
-        # Try to find JSON in the response
+        # Try to find JSON in the response if needed
         if not text_response.startswith("{"):
-            # Try to find JSON object in the text
             start = text_response.find("{")
             end = text_response.rfind("}") + 1
             if start != -1 and end > start:
                 text_response = text_response[start:end]
 
-        console.log(f"Parsing JSON: {text_response[:100]}...")
+        console.log(f"Parsing JSON: {text_response[:150]}...")
         result = json.loads(text_response)
 
         # Validate the classification
